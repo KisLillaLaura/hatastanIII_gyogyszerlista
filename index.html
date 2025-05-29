@@ -1,1 +1,817 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyógyszer Hatástani Csoport Párosító</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .game-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .drug-display {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #e8f4f8;
+            border-radius: 5px;
+        }
+        .level-container {
+            margin-bottom: 15px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        select:disabled {
+            background-color: #f5f5f5;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .feedback {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .score-display {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gyógyszer Hatástani Csoport Párosító</h1>
+    <div class="game-container">
+        <div class="score-display">
+            Pontszám: <span id="score">0</span> / <span id="total">0</span>
+        </div>
+        <div class="drug-display" id="current-drug"></div>
+        
+        <div class="level-container">
+            <label for="level1">1. szint (Fő hatástani csoport):</label>
+            <select id="level1" disabled>
+                <option value="">Válassz fő hatástani csoportot...</option>
+            </select>
+        </div>
+        
+        <div class="level-container">
+            <label for="level2">2. szint (Alcsoport):</label>
+            <select id="level2" disabled>
+                <option value="">Válassz alcsoportot...</option>
+            </select>
+        </div>
+        
+        <div class="level-container">
+            <label for="level3">3. szint (Részletes csoport):</label>
+            <select id="level3" disabled>
+                <option value="">Válassz részletes csoportot...</option>
+            </select>
+        </div>
+        
+        <button id="check-button" disabled>Ellenőrzés</button>
+        <button id="next-button" style="display: none;">Következő gyógyszer</button>
+        
+        <div id="feedback" class="feedback" style="display: none;"></div>
+    </div>
 
+    <script>
+        // Gyógyszer adatbázis
+        const drugDatabase = {
+            // Gyomorra ható szerek
+            "OMEPRAZOL": ["GYOMORRA HATÓ SZEREK", "SAVSZEKRÉCIÓ GÁTLÓK", "Protonpumpagátlók"],
+            "PANTOPRAZOL": ["GYOMORRA HATÓ SZEREK", "SAVSZEKRÉCIÓ GÁTLÓK", "Protonpumpagátlók"],
+            "ESOMEPRAZOL": ["GYOMORRA HATÓ SZEREK", "SAVSZEKRÉCIÓ GÁTLÓK", "Protonpumpagátlók"],
+            "LANSOPRAZOL": ["GYOMORRA HATÓ SZEREK", "SAVSZEKRÉCIÓ GÁTLÓK", "Protonpumpagátlók"],
+            "RABEPRAZOL": ["GYOMORRA HATÓ SZEREK", "SAVSZEKRÉCIÓ GÁTLÓK", "Protonpumpagátlók"],
+            "FAMOTIDIN": ["GYOMORRA HATÓ SZEREK", "SAVSZEKRÉCIÓ GÁTLÓK", "H2-antagonisták"],
+            "NaHCO3": ["GYOMORRA HATÓ SZEREK", "ANTACIDOK", "Szisztémás"],
+            "CaCO3": ["GYOMORRA HATÓ SZEREK", "ANTACIDOK", "Nem szisztémás"],
+            "Mg(OH)2": ["GYOMORRA HATÓ SZEREK", "ANTACIDOK", "Nem szisztémás"],
+            "Al(OH)3": ["GYOMORRA HATÓ SZEREK", "ANTACIDOK", "Nem szisztémás"],
+            "HYDROTALCIT": ["GYOMORRA HATÓ SZEREK", "ANTACIDOK", "Nem szisztémás"],
+            "SUCRALFAT": ["GYOMORRA HATÓ SZEREK", "NYÁLKAHRTYAVÉDŐ SZEREK", ""],
+            "ALGINAT": ["GYOMORRA HATÓ SZEREK", "NYÁLKAHRTYAVÉDŐ SZEREK", ""],
+            "BISMUTH": ["GYOMORRA HATÓ SZEREK", "NYÁLKAHRTYAVÉDŐ SZEREK", ""],
+            "METOCLOPRAMID": ["GYOMORRA HATÓ SZEREK", "PROKINETIKUS SZEREK", ""],
+            "DOMPERIDON": ["GYOMORRA HATÓ SZEREK", "PROKINETIKUS SZEREK", ""],
+            "ITOPRID": ["GYOMORRA HATÓ SZEREK", "PROKINETIKUS SZEREK", ""],
+            
+            // Hányáscsillapítók
+            "SCOPOLAMIN": ["HÁNYÁSCSILLAPÍTÓK", "ANTIMUSZKARIN SZEREK", ""],
+            "DIPHENHYDRAMIN": ["HÁNYÁSCSILLAPÍTÓK", "ANTIHISZTAMINOK", ""],
+            "PROMETHAZIN": ["HÁNYÁSCSILLAPÍTÓK", "ANTIHISZTAMINOK", ""],
+            "ONDANSETRON": ["HÁNYÁSCSILLAPÍTÓK", "5-HT3-ANTAGONISTÁK", ""],
+            "GRANISETRON": ["HÁNYÁSCSILLAPÍTÓK", "5-HT3-ANTAGONISTÁK", ""],
+            "NABILON": ["HÁNYÁSCSILLAPÍTÓK", "KANNABINOIDOK", ""],
+            "PYRIDOXIN": ["HÁNYÁSCSILLAPÍTÓK", "B6-VITAMIN", ""],
+            "DEXAMETHASON": ["HÁNYÁSCSILLAPÍTÓK", "GLUKOKORTIKOIDOK", ""],
+            "APREPITANT": ["HÁNYÁSCSILLAPÍTÓK", "NK1-ANTAGONISTA", ""],
+            "FOSAPREPITANT": ["HÁNYÁSCSILLAPÍTÓK", "NK1-ANTAGONISTA", ""],
+            
+            // Hashajtók
+            "MgSO4": ["HASHAJTÓK", "OZMOTIKUS HASHAJTÓK", "Sós hashajtók"],
+            "Na2SO4": ["HASHAJTÓK", "OZMOTIKUS HASHAJTÓK", "Sós hashajtók"],
+            "Na2HPO4": ["HASHAJTÓK", "OZMOTIKUS HASHAJTÓK", "Sós hashajtók"],
+            "LACTULOSE": ["HASHAJTÓK", "OZMOTIKUS HASHAJTÓK", "Szénhidrátok"],
+            "SORBIT": ["HASHAJTÓK", "OZMOTIKUS HASHAJTÓK", "Szénhidrátok"],
+            "GLYCERIN": ["HASHAJTÓK", "OZMOTIKUS HASHAJTÓK", "Szénhidrátok"],
+            "MACROGOL": ["HASHAJTÓK", "OZMOTIKUS HASHAJTÓK", "Egyéb ozmotikus hashajtók"],
+            "PARAFFIN": ["HASHAJTÓK", "SZÉKLETPUHÍTÓ HASHAJTÓK", "Lubrikáns"],
+            "SENNOSID": ["HASHAJTÓK", "BÉLIZGATÓ HASHAJTÓK", "Antraglikozidok"],
+            "PHENOLPHTALEIN": ["HASHAJTÓK", "BÉLIZGATÓ HASHAJTÓK", ""],
+            "BISACODYL": ["HASHAJTÓK", "BÉLIZGATÓ HASHAJTÓK", ""],
+            "NATRIUM PICOSULFAT": ["HASHAJTÓK", "BÉLIZGATÓ HASHAJTÓK", ""],
+            "OLEUM RICINI": ["HASHAJTÓK", "BÉLIZGATÓ HASHAJTÓK", ""],
+            "CARBO ACTIVATUS": ["HASHAJTÓK", "ADSZORBENSEK", ""],
+            "DIOSMECTIT": ["HASHAJTÓK", "ADSZORBENSEK", ""],
+            "ALBUMIN TANNAT": ["HASHAJTÓK", "ADSTRINGENSEK", ""],
+            "LOPERAMID": ["HASHAJTÓK", "BÉLMOTILITÁST GÁTLÓ SZEREK", ""],
+            "RACECADOTRIL": ["HASHAJTÓK", "BÉLMOTILITÁST GÁTLÓ SZEREK", ""],
+            
+            // Görcsoldók
+            "PAPAVERIN": ["GÖRCSOLDÓK", "DIREKT SIMAIZOM RELAXÁNSOK", ""],
+            "DROTAVERIN": ["GÖRCSOLDÓK", "DIREKT SIMAIZOM RELAXÁNSOK", ""],
+            "MEBEVERIN": ["GÖRCSOLDÓK", "DIREKT SIMAIZOM RELAXÁNSOK", ""],
+            "PINAVERIN": ["GÖRCSOLDÓK", "DIREKT SIMAIZOM RELAXÁNSOK", ""],
+            "METHYLHOMATROPIN": ["GÖRCSOLDÓK", "ANTIKOLINERG SZEREK", ""],
+            "BUTYLSCOPOLAMIN": ["GÖRCSOLDÓK", "ANTIKOLINERG SZEREK", ""],
+            
+            // Epére ható szerek
+            "URSODEOXYCHOLSAV": ["EPÉRE HATÓ SZEREK", "", ""],
+            "CURCUMIN": ["EPÉRE HATÓ SZEREK", "EPEHAJTÓK", ""],
+            
+            // Májvédők
+            "ORNITHIN ASPARTAT": ["MÁJVÉDŐK", "", ""],
+            "SYLIMARIN": ["MÁJVÉDŐK", "", ""],
+            
+            // Enzym készítmények
+            "PANCREATIN": ["ENZIM KÉSZÍTMÉNYEK", "", ""],
+            "LACTASE": ["ENZIM KÉSZÍTMÉNYEK", "", ""],
+            
+            // Lipáz gátló
+            "ORLISTAT": ["LIPÁZ GÁTLÓ", "", ""],
+            
+            // Inzulinok
+            "LISPRO": ["INZULINOK", "ULTRAGYORS HATÁSÚ SZEREK", ""],
+            "ASPART": ["INZULINOK", "ULTRAGYORS HATÁSÚ SZEREK", ""],
+            "GLULISIN": ["INZULINOK", "ULTRAGYORS HATÁSÚ SZEREK", ""],
+            "REGULÁRIS": ["INZULINOK", "GYORS HATÁSÚ SZEREK", ""],
+            "ISOPHAN": ["INZULINOK", "INTERMEDIER HATÁSÚ SZEREK", ""],
+            "NPH": ["INZULINOK", "INTERMEDIER HATÁSÚ SZEREK", ""],
+            "GLARGIN": ["INZULINOK", "HOSSZÚ HATÁSÚ SZEREK", ""],
+            "DETEMIR": ["INZULINOK", "HOSSZÚ HATÁSÚ SZEREK", ""],
+            "DEGLUDEC": ["INZULINOK", "HOSSZÚ HATÁSÚ SZEREK", ""],
+            
+            // Inzulin szenzitizálók
+            "METFORMIN": ["INZULIN SZENZITIZÁLÓK", "BIGUANIDINEK", ""],
+            "PIOGLITAZON": ["INZULIN SZENZITIZÁLÓK", "PPARγ AKTIVÁLÓK", ""],
+            
+            // Inzulinszekréció-fokozók
+            "GLIMEPIRID": ["INZULINSZEKRÉCIÓ-FOKOZÓK", "SZULFANILUREÁK", ""],
+            "GLICLAZID": ["INZULINSZEKRÉCIÓ-FOKOZÓK", "SZULFANILUREÁK", ""],
+            "REPAGLINID": ["INZULINSZEKRÉCIÓ-FOKOZÓK", "MEGLITINIDEK", ""],
+            
+            // Inkreteinkre ható szerek
+            "LIRAGLUTID": ["INKRETINEKRE HATÓ SZEREK", "INKRETIN ANALÓGOK", "GLP-1"],
+            "SEMAGLUTID": ["INKRETINEKRE HATÓ SZEREK", "INKRETIN ANALÓGOK", "GLP-1"],
+            "TIRZEPATID": ["INKRETINEKRE HATÓ SZEREK", "INKRETIN ANALÓGOK", "GIP"],
+            "VILDAGLIPTIN": ["INKRETINEKRE HATÓ SZEREK", "DIPEPTIDIL-PEPTIDÁZ IV GÁTLÓK", ""],
+            "SITAGLIPTIN": ["INKRETINEKRE HATÓ SZEREK", "DIPEPTIDIL-PEPTIDÁZ IV GÁTLÓK", ""],
+            
+            // Inzulintól független hatású antidiabetikumok
+            "ACARBOSE": ["INZULINTÓL FÜGGETLEN HATÁSÚ ANTIDIABETIKUMOK", "α-GLUKOZIDÁZ GÁTLÓ", ""],
+            "DAPAGLIFLOZIN": ["INZULINTÓL FÜGGETLEN HATÁSÚ ANTIDIABETIKUMOK", "SGLT-2-GÁTLÓK", ""],
+            "EMPAGLIFLOZIN": ["INZULINTÓL FÜGGETLEN HATÁSÚ ANTIDIABETIKUMOK", "SGLT-2-GÁTLÓK", ""],
+            
+            // Ösztrogén rendszerre ható szerek
+            "TAMOXIFEN": ["ÖSZTROGÉN RENDSZERRE HATÓ SZEREK", "SZELEKTÍV ÖSZTROGÉN RECEPTOR MODULÁTOROK (SERM)", ""],
+            "CLOMIFEN": ["ÖSZTROGÉN RENDSZERRE HATÓ SZEREK", "SZELEKTÍV ÖSZTROGÉN RECEPTOR MODULÁTOROK (SERM)", ""],
+            "RALOXIFEN": ["ÖSZTROGÉN RENDSZERRE HATÓ SZEREK", "SZELEKTÍV ÖSZTROGÉN RECEPTOR MODULÁTOROK (SERM)", ""],
+            "ANASTROZOL": ["ÖSZTROGÉN RENDSZERRE HATÓ SZEREK", "AROMATÁZ GÁTLÓK", ""],
+            "LETROZOL": ["ÖSZTROGÉN RENDSZERRE HATÓ SZEREK", "AROMATÁZ GÁTLÓK", ""],
+            
+            // Progesztogén rendszerre ható szerek
+            "PROGESZTERON": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "1. GENERÁCIÓ", ""],
+            "MEDROXYPROGESZTERON": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "1. GENERÁCIÓ", ""],
+            "MEGESTROL": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "1. GENERÁCIÓ", ""],
+            "LEVONORGESTREL": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "2. GENERÁCIÓ", ""],
+            "DESOGESTREL": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "3. GENERÁCIÓ", ""],
+            "GESTODEN": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "3. GENERÁCIÓ", ""],
+            "ETONOGESTREL": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "3. GENERÁCIÓ", ""],
+            "DROSPIRENON": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "EGYÉB SZEREK", ""],
+            "DIENOGEST": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "EGYÉB SZEREK", ""],
+            "ULIPRISTAL": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "PARCIÁLIS AGONISTA", ""],
+            "MIFEPRISTON": ["PROGESZTOGÉN RENDSZERRE HATÓ SZEREK", "ANTIPROGESZTOGÉNEK", ""],
+            
+            // Androgén rendszerre ható szerek
+            "TESTOSTERON": ["ANDROGÉN RENDSZERRE HATÓ SZEREK", "ANDROGÉNEK", ""],
+            "CYPROTERON ACETAT": ["ANDROGÉN RENDSZERRE HATÓ SZEREK", "ANTIANDROGÉNEK", ""],
+            "BICALUTAMID": ["ANDROGÉN RENDSZERRE HATÓ SZEREK", "ANTIANDROGÉNEK", ""],
+            "FINASZTERID": ["ANDROGÉN RENDSZERRE HATÓ SZEREK", "5α-REDUKTÁZ GÁTLÓK", ""],
+            "DUTASZTERID": ["ANDROGÉN RENDSZERRE HATÓ SZEREK", "5α-REDUKTÁZ GÁTLÓK", ""],
+            "NANDROLON": ["ANDROGÉN RENDSZERRE HATÓ SZEREK", "ANABOLIKUS SZTEROIDOK", ""],
+            
+            // GnRH-ra ható szerek
+            "LEUPRORELIN": ["GNRH-RA HATÓ SZEREK", "GNRH ANALÓGOK", ""],
+            "GANIRELIX": ["GNRH-RA HATÓ SZEREK", "GNRH-ANTAGONISTÁK", ""],
+            
+            // Gonadotrop hormon analógok
+            "LUTROPIN": ["GONADOTROP HORMON ANALÓGOK", "LH", ""],
+            "FOLLITROPIN": ["GONADOTROP HORMON ANALÓGOK", "FSH", ""],
+            "DINOPROSTON": ["GONADOTROP HORMON ANALÓGOK", "PROSZTAGLANDINOK", ""],
+            
+            // Tokolitikumok
+            "TERBUTALIN": ["TOKOLITIKUMOK", "β2-AGONISTÁK", ""],
+            "ATOSIBAN": ["TOKOLITIKUMOK", "OXITOCIN-ANTAGONISTA", ""],
+            "MAGNESIUM SULFAT": ["TOKOLITIKUMOK", "", ""],
+            "NIFEDIPIN": ["TOKOLITIKUMOK", "", ""],
+            
+            // Erektilis diszfunkció elleni szerek
+            "SILDENAFIL": ["EREKTILIS DISZFUNKKCIÓ ELLENI SZEREK", "PDE-5 GÁTLÓK", ""],
+            "TADALAFIL": ["EREKTILIS DISZFUNKKCIÓ ELLENI SZEREK", "PDE-5 GÁTLÓK", ""],
+            
+            // Fogamzásgátlók
+            "ETINYLESTRADIOL": ["FOGAMZÁSGÁTLÓK", "KOMBINÁLT ORÁLIS FOGAMZÁSGÁTLÓK", ""],
+            "ESTRADIOL": ["FOGAMZÁSGÁTLÓK", "KOMBINÁLT ORÁLIS FOGAMZÁSGÁTLÓK", ""],
+            "ESTETROL": ["FOGAMZÁSGÁTLÓK", "KOMBINÁLT ORÁLIS FOGAMZÁSGÁTLÓK", ""],
+            "LEVONORGESTREL": ["FOGAMZÁSGÁTLÓK", "CSAK PROGESTOGENT TARTALMAZÓ FOGAMZÁSGÁTLÓK", ""],
+            "DESOGESTREL": ["FOGAMZÁSGÁTLÓK", "CSAK PROGESTOGENT TARTALMAZÓ FOGAMZÁSGÁTLÓK", ""],
+            "MEDROXYPROGESZTERON ACETAT": ["FOGAMZÁSGÁTLÓK", "CSAK PROGESTOGENT TARTALMAZÓ FOGAMZÁSGÁTLÓK", ""],
+            "LEVONORGESTREL": ["FOGAMZÁSGÁTLÓK", "SÜRGŐSSÉGI FOGAMZÁSGÁTLÓK", ""],
+            "ULIPRISTAL": ["FOGAMZÁSGÁTLÓK", "SÜRGŐSSÉGI FOGAMZÁSGÁTLÓK", ""],
+            "BENZALKONYUM": ["FOGAMZÁSGÁTLÓK", "LOKÁLIS FOGAMZÁSGÁTLÓK", ""],
+            "NONOXINOL 9": ["FOGAMZÁSGÁTLÓK", "LOKÁLIS FOGAMZÁSGÁTLÓK", ""],
+            
+            // D-vitamin készítmények
+            "COLECALCIFEROL": ["D-VITAMIN KÉSZÍTMÉNYEK", "VITAMIN D3", ""],
+            "ALFACALCIDOL": ["D-VITAMIN KÉSZÍTMÉNYEK", "AKTÍV D-VITAMIN SZÁRMAZÉKOK", ""],
+            "CALCITRIOL": ["D-VITAMIN KÉSZÍTMÉNYEK", "AKTÍV D-VITAMIN SZÁRMAZÉKOK", ""],
+            "PARICALCITOL": ["D-VITAMIN KÉSZÍTMÉNYEK", "AKTÍV D-VITAMIN SZÁRMAZÉKOK", ""],
+            
+            // Biszfoszfonátok
+            "CLODRONAT": ["BISZFOSZFONÁTOK", "NITROGÉNT NEM TARTALMAZÓ SZEREK", ""],
+            "ALENDRONAT": ["BISZFOSZFONÁTOK", "AMINO-BISZFOSZFONÁTOK", ""],
+            "RISEDRONAT": ["BISZFOSZFONÁTOK", "AMINO-BISZFOSZFONÁTOK", ""],
+            "IBANDRONAT": ["BISZFOSZFONÁTOK", "AMINO-BISZFOSZFONÁTOK", ""],
+            "ZOLEDRONAT": ["BISZFOSZFONÁTOK", "AMINO-BISZFOSZFONÁTOK", ""],
+            "RALOXIFEN": ["BISZFOSZFONÁTOK", "ÖSZTROGÉNEK", ""],
+            "TIBOLON": ["BISZFOSZFONÁTOK", "ÖSZTROGÉNEK", ""],
+            "CALCITONIN": ["BISZFOSZFONÁTOK", "KALCITONIN", ""],
+            "CINACALCET": ["BISZFOSZFONÁTOK", "KALCIMIMETIKUS SZEREK", ""],
+            "TERIPARATID": ["BISZFOSZFONÁTOK", "KALCIUM SÓK EGYÉB SZEREK", ""],
+            "DENOZUMAB": ["BISZFOSZFONÁTOK", "KALCIUM SÓK EGYÉB SZEREK", ""],
+            "ROMOSOZUMAB": ["BISZFOSZFONÁTOK", "KALCIUM SÓK EGYÉB SZEREK", ""],
+            "STRONCIUM RANELAT": ["BISZFOSZFONÁTOK", "KALCIUM SÓK EGYÉB SZEREK", ""],
+            
+            // Pajzsmirigy hormonok
+            "LEVOTHYROXIN": ["PAJZSMIRIGY HORMONOK", "", ""],
+            "PROPYLTHIOURACIL": ["PAJZSMIRIGY HORMONOK", "PEROXIDÁZ GÁTLÓK", ""],
+            "THIAMAZOL": ["PAJZSMIRIGY HORMONOK", "PEROXIDÁZ GÁTLÓK", ""],
+            "PROPRANOLOL": ["PAJZSMIRIGY HORMONOK", "HYPERTHYREOSIS TÜNETI KEZELÉSE", ""],
+            
+            // Hypophysis hormonjaira ható szerek
+            "SOMATROPIN": ["A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK", "NÖVEKEDÉSI HORMON", ""],
+            "PEGVISOMANT": ["A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK", "NÖVEKEDÉSI HORMON ANTAGONISTA", ""],
+            "SOMATOSTATIN": ["A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK", "NÖVEKEDÉSI HORMON FELSZABADULÁS GÁTLÓ HORMON", ""],
+            "VASOPRESSIN": ["A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK", "VAZOPRESSZIN HORMON RENDSZERRE HATÓ SZEREK", "Analógok"],
+            "DESMOPRESSIN": ["A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK", "VAZOPRESSZIN HORMON RENDSZERRE HATÓ SZEREK", "Analógok"],
+            "TERLIPRESSIN": ["A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK", "VAZOPRESSZIN HORMON RENDSZERRE HATÓ SZEREK", "Analógok"],
+            "TOLVAPTAN": ["A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK", "VAZOPRESSZIN HORMON RENDSZERRE HATÓ SZEREK", "Antagonista"],
+            
+            // Antibiotikumok
+            "PIPERACILLIN": ["ANTIBIOTIKUMOK", "KITERJESZTETT SPEKTRUMÚ PENICILLINEK", ""],
+            "AMPICILLIN-SULBACTAM": ["ANTIBIOTIKUMOK", "LAKTAMÁZ GÁTLÓVAL KOMBINÁLT PENICILLINEK", ""],
+            "AMOXICILLIN-CLAVULANSAV": ["ANTIBIOTIKUMOK", "LAKTAMÁZ GÁTLÓVAL KOMBINÁLT PENICILLINEK", ""],
+            "CEFAZOLIN": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "I. generáció"],
+            "CEFALEXIN": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "I. generáció"],
+            "CEFUROXIM": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "II. generáció"],
+            "CEFACLOR": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "II. generáció"],
+            "CEFOTAXIM": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "III. generáció"],
+            "CEFTRIAXON": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "III. generáció"],
+            "CEFTAZIDIM": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "III. generáció"],
+            "CEFIXIM": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "III. generáció"],
+            "CEFEPIM": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "IV. generáció"],
+            "CEFTAROLIN": ["ANTIBIOTIKUMOK", "CEPHALOSPORINOK", "V. generáció"],
+            "IMIPENEM-CILASTATIN": ["ANTIBIOTIKUMOK", "CARBAPENEMEK", ""],
+            "MEROPENEM": ["ANTIBIOTIKUMOK", "CARBAPENEMEK", ""],
+            "ERTAPENEM": ["ANTIBIOTIKUMOK", "CARBAPENEMEK", ""],
+            "VANCOMYCIN": ["ANTIBIOTIKUMOK", "GLIKOPEPTIDEK", ""],
+            "FOSFOMYCIN TROMETAMOL": ["ANTIBIOTIKUMOK", "EGYÉB SEJTFALSZINTÉZIST GÁTLÓ SZEREK", ""],
+            "BACITRACIN": ["ANTIBIOTIKUMOK", "EGYÉB SEJTFALSZINTÉZIST GÁTLÓ SZEREK", ""],
+            "GENTAMICIN": ["ANTIBIOTIKUMOK", "AMINOGLIKOZID ANTIBIOTIKUMOK", ""],
+            "TOBRAMYCIN": ["ANTIBIOTIKUMOK", "AMINOGLIKOZID ANTIBIOTIKUMOK", ""],
+            "AMIKACIN": ["ANTIBIOTIKUMOK", "AMINOGLIKOZID ANTIBIOTIKUMOK", ""],
+            "OXYTETRACYCLIN": ["ANTIBIOTIKUMOK", "TETRACIKLINEK", ""],
+            "DOXYCYCLIN": ["ANTIBIOTIKUMOK", "TETRACIKLINEK", ""],
+            "TIGECYCLIN": ["ANTIBIOTIKUMOK", "TETRACIKLINEK", "Glicilciklinek"],
+            "ERYTHROMYCIN": ["ANTIBIOTIKUMOK", "MAKROLIDOK", "Hagyományos szerek"],
+            "SPIRAMYCIN": ["ANTIBIOTIKUMOK", "MAKROLIDOK", "Hagyományos szerek"],
+            "CLARITHROMYCIN": ["ANTIBIOTIKUMOK", "MAKROLIDOK", "Újabb szerek"],
+            "AZITHROMYCIN": ["ANTIBIOTIKUMOK", "MAKROLIDOK", "Újabb szerek"],
+            "CLINDAMYCIN": ["ANTIBIOTIKUMOK", "LINKÓZAMIDOK", ""],
+            "LINEZOLID": ["ANTIBIOTIKUMOK", "OXAZOLIDINONOK", ""],
+            "FUSIDINSAV": ["ANTIBIOTIKUMOK", "SZTEROID ANTIBIOTIKUMOK", ""],
+            "MUPIROCIN": ["ANTIBIOTIKUMOK", "EGYÉB FEHÉRJESZINTÉZIS GÁTLÓK", ""],
+            "NORFLOXACIN": ["ANTIBIOTIKUMOK", "KINOLONOK", "II.a."],
+            "CIPROFLOXACIN": ["ANTIBIOTIKUMOK", "KINOLONOK", "II.b."],
+            "OFLOXACIN": ["ANTIBIOTIKUMOK", "KINOLONOK", "II.b."],
+            "LEVOFLOXACIN": ["ANTIBIOTIKUMOK", "KINOLONOK", "III. generáció"],
+            "MOXIFLOXACIN": ["ANTIBIOTIKUMOK", "KINOLONOK", "IV. generáció"],
+            "METRONIDAZOL": ["ANTIBIOTIKUMOK", "DNS-KÁROSÍTÓ ANTIBIOTIKUMOK", ""],
+            "NITROFURANTOIN": ["ANTIBIOTIKUMOK", "DNS-KÁROSÍTÓ ANTIBIOTIKUMOK", ""],
+            "RIFAMPICIN": ["ANTIBIOTIKUMOK", "RNS-POLIMERÁZ GÁTLÓK", ""],
+            "RIFAXIMIN": ["ANTIBIOTIKUMOK", "RNS-POLIMERÁZ GÁTLÓK", ""],
+            "FIDAXOMICIN": ["ANTIBIOTIKUMOK", "RNS-POLIMERÁZ GÁTLÓK", ""],
+            "COLISTIN": ["ANTIBIOTIKUMOK", "MEMBRÁNKÁROSÍTÓ ANTIBIOTIKUMOK", ""],
+            
+            // Mycobacterium elleni szerek
+            "ISONIAZID": ["MYCOBACTERIUM ELLENI SZEREK", "ELSŐVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            "RIFAMPICIN": ["MYCOBACTERIUM ELLENI SZEREK", "ELSŐVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            "PYRAZINAMID": ["MYCOBACTERIUM ELLENI SZEREK", "ELSŐVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            "ETHAMBUTOL": ["MYCOBACTERIUM ELLENI SZEREK", "ELSŐVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            "STREPTOMYCIN": ["MYCOBACTERIUM ELLENI SZEREK", "MÁSODVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            "BEDAQUILIN": ["MYCOBACTERIUM ELLENI SZEREK", "MÁSODVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            "CIPROFLOXACIN": ["MYCOBACTERIUM ELLENI SZEREK", "MÁSODVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            "CLARITHROMYCIN": ["MYCOBACTERIUM ELLENI SZEREK", "MÁSODVONALBELI ANTITUBERKULOTIKUMOK", ""],
+            
+            // Vírusellenes szerek
+            "ACICLOVIR": ["VÍRUSELLENES SZEREK", "NUKLEOZID ANALÓG DNS-POLIMERÁZ GÁTLÓK", ""],
+            "GANCICLOVIR": ["VÍRUSELLENES SZEREK", "NUKLEOZID ANALÓG DNS-POLIMERÁZ GÁTLÓK", ""],
+            "FOSCARNET": ["VÍRUSELLENES SZEREK", "NEM-NUKLEOZID ANALÓG DNS-POLIMERÁZ GÁTLÓ", ""],
+            "AMANTADIN": ["VÍRUSELLENES SZEREK", "DEKAPSZIDÁCIÓ GÁTLÓK", ""],
+            "OSELTAMIVIR": ["VÍRUSELLENES SZEREK", "NEURAMINIDÁZ GÁTLÓK", ""],
+            "MARAVIROC": ["VÍRUSELLENES SZEREK", "FÚZIÓGÁTLÓK", ""],
+            "RALTEGRAVIR": ["VÍRUSELLENES SZEREK", "INTEGRÁZ GÁTLÓ", ""],
+            "ZIDOVUDIN": ["VÍRUSELLENES SZEREK", "NUKLEOZID/NUKLEOTID ANALÓG REVERZ-TRANSZKIPTÁZ GÁTLÓK (NRTI)", ""],
+            "NEVIRAPIN": ["VÍRUSELLENES SZEREK", "NEM-NUKLEOZID ANALÓG REVERZ-TRANSZKIPTÁZ GÁTLÓK (NNRTI)", ""],
+            "DARUNAVIR": ["VÍRUSELLENES SZEREK", "HIV PROTEÁZ INHIBÍTOROK (PI)", ""],
+            "RIBAVIRIN": ["VÍRUSELLENES SZEREK", "HCV, RSV", ""],
+            "SOFOSBUVIR": ["VÍRUSELLENES SZEREK", "HCV NS5B-GÁTLÓK", ""],
+            "FAVIPIRAVIR": ["VÍRUSELLENES SZEREK", "COVID-19", ""],
+            "REMDESIVIR": ["VÍRUSELLENES SZEREK", "COVID-19", ""],
+            
+            // Gombás fertőzések elleni szerek
+            "AMPHOTERICIN B": ["GOMBÁS FERTŐZÉSEK ELLENI SZEREK", "MEMBRÁNKÁROSÍTÓ SZEREK", ""],
+            "NYSTATIN": ["GOMBÁS FERTŐZÉSEK ELLENI SZEREK", "MEMBRÁNKÁROSÍTÓ SZEREK", ""],
+            "KETOCONAZOL": ["GOMBÁS FERTŐZÉSEK ELLENI SZEREK", "14α-DEMETILÁZ GÁTLÓK (azolok)", "Lokális szerek"],
+            "ITRACONAZOL": ["GOMBÁS FERTŐZÉSEK ELLENI SZEREK", "14α-DEMETILÁZ GÁTLÓK (azolok)", "Szisztémás szerek"],
+            "FLUCONAZOL": ["GOMBÁS FERTŐZÉSEK ELLENI SZEREK", "14α-DEMETILÁZ GÁTLÓK (azolok)", "Szisztémás szerek"],
+            "TERBINAFIN": ["GOMBÁS FERTŐZÉSEK ELLENI SZEREK", "SZKVALÉN-EPOXIDÁZ GÁTLÓK", ""],
+            "CASPOFUNGIN": ["GOMBÁS FERTŐZÉSEK ELLENI SZEREK", "β-(1,3)-GLUKÁN-SZINTÉZIS GÁTLÓ", ""],
+            
+            // Parazitaellenes szerek
+            "CHLOROQUIN": ["PARAZITAELLENES SZEREK", "MALÁRIAELLENES SZEREK", "Hem-polimeráz gátlók"],
+            "MEFLOQUIN": ["PARAZITAELLENES SZEREK", "MALÁRIAELLENES SZEREK", "Hem-polimeráz gátlók"],
+            "ATOVAQUON+PROGUANIL": ["PARAZITAELLENES SZEREK", "MALÁRIAELLENES SZEREK", "Mitokondriális elektrontranszport-lánc gátló"],
+            "METRONIDAZOL": ["PARAZITAELLENES SZEREK", "AMOEBIASIS, GIARDIASIS ÉS TRICHOMONIASIS ELLENI SZEREK", ""],
+            "SULFAMETHOXAZOL-TRIMETHOPRIM": ["PARAZITAELLENES SZEREK", "TOXOPLASMOSIS ELLENI SZEREK", ""],
+            "MEBENDAZOL": ["PARAZITAELLENES SZEREK", "NEMATODA ELLENES SZEREK", "β-Tubulin polimerizáció gátlók (benzimidazolok)"],
+            "PRAZIQUANTEL": ["PARAZITAELLENES SZEREK", "TREMATODA ELLENES SZEREK", ""],
+            
+            // Kemoterápia
+            "5-FLUOROURACIL": ["KEMOTERÁPIA", "ANTIMETABOLITOK", "Pirimidin analógok"],
+            "CAPECITABIN": ["KEMOTERÁPIA", "ANTIMETABOLITOK", "Pirimidin analógok"],
+            "CYTARABIN": ["KEMOTERÁPIA", "ANTIMETABOLITOK", "Pirimidin analógok"],
+            "GEMCITABIN": ["KEMOTERÁPIA", "ANTIMETABOLITOK", "Pirimidin analógok"],
+            "METHOTREXAT": ["KEMOTERÁPIA", "ANTIMETABOLITOK", "Folsav antagonisták"],
+            "CYCLOPHOSPHAMID": ["KEMOTERÁPIA", "DIREKT DNS KÁROSÍTÓ SZEREK", "Mustárnitrogének"],
+            "CISPLATIN": ["KEMOTERÁPIA", "DIREKT DNS KÁROSÍTÓ SZEREK", "Platina vegyületek"],
+            "DOXORUBICIN": ["KEMOTERÁPIA", "DIREKT DNS KÁROSÍTÓ SZEREK", "Antraciklinek"],
+            "VINCRISTIN": ["KEMOTERÁPIA", "DIREKT DNS KÁROSÍTÓ SZEREK", "Vinca alkaloidok"],
+            "PACLITAXEL": ["KEMOTERÁPIA", "DIREKT DNS KÁROSÍTÓ SZEREK", "Taxánok"],
+            "MESNA": ["KEMOTERÁPIA", "DETOXIKÁLÓ SZEREK", "haemorrhagiás cystitis"],
+            "TAMOXIFEN": ["KEMOTERÁPIA", "HORMONTERÁPIA", "Antiösztrogének"],
+            "RITUXIMAB": ["KEMOTERÁPIA", "CÉLZOTT DAGANATELLENES SZEREK", "Tumor antigén elleni antitestek"],
+            "IMATINIB": ["KEMOTERÁPIA", "CÉLZOTT DAGANATELLENES SZEREK", "Bcr-Abl kináz gátlók"],
+            "BEVACIZUMAB": ["KEMOTERÁPIA", "CÉLZOTT DAGANATELLENES SZEREK", "Angiogenezis gátlók"],
+            "BORTEZOMIB": ["KEMOTERÁPIA", "EGYÉB DAGANATELLENES SZEREK", "proteaszóma gátlók"],
+            
+            // Egyéb szerek
+            "ISOTRETINOIN": ["EGYÉB SZEREK", "RETINOIDOK", "Szisztémás"],
+            "TRETINOIN": ["EGYÉB SZEREK", "RETINOIDOK", "Lokális"],
+            "CALCIPOTRIOL": ["EGYÉB SZEREK", "D-VITAMIN ANALÓGOK", ""],
+            "BENFOTIAMIN": ["EGYÉB SZEREK", "B-VITAMIN SZÁRMAZÉKOK", ""],
+            "GLUCOSAMIN": ["EGYÉB SZEREK", "PORCVÉDŐK", ""],
+            "HYALURONSAV": ["EGYÉB SZEREK", "PORCVÉDŐK", ""],
+            "UBIDECARENON": ["EGYÉB SZEREK", "", "Q10"],
+            
+            // Vérképzésre ható szerek
+            "VAS(II)-FUMARÁT": ["A VÉRKÉPZÉSRE HATÓ SZEREK", "VAS ÉS VITAMINOK", "Vas"],
+            "FERROUS SULFATE": ["A VÉRKÉPZÉSRE HATÓ SZEREK", "VAS ÉS VITAMINOK", "Vas"],
+            "FOLSAV": ["A VÉRKÉPZÉSRE HATÓ SZEREK", "VAS ÉS VITAMINOK", ""],
+            "CYANOCOBALAMIN": ["A VÉRKÉPZÉSRE HATÓ SZEREK", "VAS ÉS VITAMINOK", "B12 vitamin"],
+            "ERYTHROPOETIN": ["A VÉRKÉPZÉSRE HATÓ SZEREK", "NÖVEKEDÉSI FAKTOROK", "EPO"],
+            "FILGRASTIM": ["A VÉRKÉPZÉSRE HATÓ SZEREK", "NÖVEKEDÉSI FAKTOROK", "G-CSF"]
+        };
+
+        // A hierarchia felépítése a választható opciókhoz
+        const hierarchy = {
+            "GYOMORRA HATÓ SZEREK": {
+                "SAVSZEKRÉCIÓ GÁTLÓK": ["Protonpumpagátlók", "H2-antagonisták"],
+                "ANTACIDOK": ["Szisztémás", "Nem szisztémás"],
+                "NYÁLKAHRTYAVÉDŐ SZEREK": [],
+                "PROKINETIKUS SZEREK": []
+            },
+            "HÁNYÁSCSILLAPÍTÓK": {
+                "ANTIMUSZKARIN SZEREK": [],
+                "ANTIHISZTAMINOK": [],
+                "5-HT3-ANTAGONISTÁK": [],
+                "KANNABINOIDOK": [],
+                "B6-VITAMIN": [],
+                "GLUKOKORTIKOIDOK": [],
+                "NK1-ANTAGONISTA": []
+            },
+            "HASHAJTÓK": {
+                "OZMOTIKUS HASHAJTÓK": ["Sós hashajtók", "Szénhidrátok", "Egyéb ozmotikus hashajtók"],
+                "SZÉKLETPUHÍTÓ HASHAJTÓK": ["Lubrikáns"],
+                "BÉLIZGATÓ HASHAJTÓK": ["Antraglikozidok"],
+                "ADSZORBENSEK": [],
+                "ADSTRINGENSEK": [],
+                "BÉLMOTILITÁST GÁTLÓ SZEREK": []
+            },
+            "GÖRCSOLDÓK": {
+                "DIREKT SIMAIZOM RELAXÁNSOK": [],
+                "ANTIKOLINERG SZEREK": []
+            },
+            "EPÉRE HATÓ SZEREK": {
+                "": [],
+                "EPEHAJTÓK": []
+            },
+            "MÁJVÉDŐK": {
+                "": []
+            },
+            "ENZIM KÉSZÍTMÉNYEK": {
+                "": []
+            },
+            "LIPÁZ GÁTLÓ": {
+                "": []
+            },
+            "INZULINOK": {
+                "ULTRAGYORS HATÁSÚ SZEREK": [],
+                "GYORS HATÁSÚ SZEREK": [],
+                "INTERMEDIER HATÁSÚ SZEREK": [],
+                "HOSSZÚ HATÁSÚ SZEREK": []
+            },
+            "INZULIN SZENZITIZÁLÓK": {
+                "BIGUANIDINEK": [],
+                "PPARγ AKTIVÁLÓK": []
+            },
+            "INZULINSZEKRÉCIÓ-FOKOZÓK": {
+                "SZULFANILUREÁK": [],
+                "MEGLITINIDEK": []
+            },
+            "INKRETINEKRE HATÓ SZEREK": {
+                "INKRETIN ANALÓGOK": ["GLP-1", "GIP"],
+                "DIPEPTIDIL-PEPTIDÁZ IV GÁTLÓK": []
+            },
+            "INZULINTÓL FÜGGETLEN HATÁSÚ ANTIDIABETIKUMOK": {
+                "α-GLUKOZIDÁZ GÁTLÓ": [],
+                "SGLT-2-GÁTLÓK": []
+            },
+            "ÖSZTROGÉN RENDSZERRE HATÓ SZEREK": {
+                "SZELEKTÍV ÖSZTROGÉN RECEPTOR MODULÁTOROK (SERM)": [],
+                "AROMATÁZ GÁTLÓK": []
+            },
+            "PROGESZTOGÉN RENDSZERRE HATÓ SZEREK": {
+                "1. GENERÁCIÓ": [],
+                "2. GENERÁCIÓ": [],
+                "3. GENERÁCIÓ": [],
+                "EGYÉB SZEREK": [],
+                "PARCIÁLIS AGONISTA": [],
+                "ANTIPROGESZTOGÉNEK": []
+            },
+            "ANDROGÉN RENDSZERRE HATÓ SZEREK": {
+                "ANDROGÉNEK": [],
+                "ANTIANDROGÉNEK": [],
+                "5α-REDUKTÁZ GÁTLÓK": [],
+                "ANABOLIKUS SZTEROIDOK": []
+            },
+            "GNRH-RA HATÓ SZEREK": {
+                "GNRH ANALÓGOK": [],
+                "GNRH-ANTAGONISTÁK": []
+            },
+            "GONADOTROP HORMON ANALÓGOK": {
+                "LH": [],
+                "FSH": [],
+                "PROSZTAGLANDINOK": []
+            },
+            "TOKOLITIKUMOK": {
+                "β2-AGONISTÁK": [],
+                "OXITOCIN-ANTAGONISTA": [],
+                "": []
+            },
+            "EREKTILIS DISZFUNKKCIÓ ELLENI SZEREK": {
+                "PDE-5 GÁTLÓK": []
+            },
+            "FOGAMZÁSGÁTLÓK": {
+                "KOMBINÁLT ORÁLIS FOGAMZÁSGÁTLÓK": [],
+                "CSAK PROGESTOGENT TARTALMAZÓ FOGAMZÁSGÁTLÓK": [],
+                "SÜRGŐSSÉGI FOGAMZÁSGÁTLÓK": [],
+                "LOKÁLIS FOGAMZÁSGÁTLÓK": []
+            },
+            "D-VITAMIN KÉSZÍTMÉNYEK": {
+                "VITAMIN D3": [],
+                "AKTÍV D-VITAMIN SZÁRMAZÉKOK": []
+            },
+            "BISZFOSZFONÁTOK": {
+                "NITROGÉNT NEM TARTALMAZÓ SZEREK": [],
+                "AMINO-BISZFOSZFONÁTOK": [],
+                "ÖSZTROGÉNEK": [],
+                "KALCITONIN": [],
+                "KALCIMIMETIKUS SZEREK": [],
+                "KALCIUM SÓK EGYÉB SZEREK": []
+            },
+            "PAJZSMIRIGY HORMONOK": {
+                "": [],
+                "PEROXIDÁZ GÁTLÓK": [],
+                "HYPERTHYREOSIS TÜNETI KEZELÉSE": []
+            },
+            "A HYPOPHYSIS HORMONJAIRA HATÓ SZEREK": {
+                "NÖVEKEDÉSI HORMON": [],
+                "NÖVEKEDÉSI HORMON ANTAGONISTA": [],
+                "NÖVEKEDÉSI HORMON FELSZABADULÁS GÁTLÓ HORMON": [],
+                "VAZOPRESSZIN HORMON RENDSZERRE HATÓ SZEREK": ["Analógok", "Antagonista"]
+            },
+            "ANTIBIOTIKUMOK": {
+                "KITERJESZTETT SPEKTRUMÚ PENICILLINEK": [],
+                "LAKTAMÁZ GÁTLÓVAL KOMBINÁLT PENICILLINEK": [],
+                "CEPHALOSPORINOK": ["I. generáció", "II. generáció", "III. generáció", "IV. generáció", "V. generáció"],
+                "CARBAPENEMEK": [],
+                "GLIKOPEPTIDEK": [],
+                "EGYÉB SEJTFALSZINTÉZIST GÁTLÓ SZEREK": [],
+                "AMINOGLIKOZID ANTIBIOTIKUMOK": [],
+                "TETRACIKLINEK": ["Glicilciklinek"],
+                "MAKROLIDOK": ["Hagyományos szerek", "Újabb szerek"],
+                "LINKÓZAMIDOK": [],
+                "OXAZOLIDINONOK": [],
+                "SZTEROID ANTIBIOTIKUMOK": [],
+                "EGYÉB FEHÉRJESZINTÉZIS GÁTLÓK": [],
+                "KINOLONOK": ["II.a.", "II.b.", "III. generáció", "IV. generáció"],
+                "DNS-KÁROSÍTÓ ANTIBIOTIKUMOK": [],
+                "RNS-POLIMERÁZ GÁTLÓK": [],
+                "MEMBRÁNKÁROSÍTÓ ANTIBIOTIKUMOK": []
+            },
+            "MYCOBACTERIUM ELLENI SZEREK": {
+                "ELSŐVONALBELI ANTITUBERKULOTIKUMOK": [],
+                "MÁSODVONALBELI ANTITUBERKULOTIKUMOK": []
+            },
+            "VÍRUSELLENES SZEREK": {
+                "NUKLEOZID ANALÓG DNS-POLIMERÁZ GÁTLÓK": [],
+                "NEM-NUKLEOZID ANALÓG DNS-POLIMERÁZ GÁTLÓ": [],
+                "DEKAPSZIDÁCIÓ GÁTLÓK": [],
+                "NEURAMINIDÁZ GÁTLÓK": [],
+                "FÚZIÓGÁTLÓK": [],
+                "INTEGRÁZ GÁTLÓ": [],
+                "NUKLEOZID/NUKLEOTID ANALÓG REVERZ-TRANSZKIPTÁZ GÁTLÓK (NRTI)": [],
+                "NEM-NUKLEOZID ANALÓG REVERZ-TRANSZKIPTÁZ GÁTLÓK (NNRTI)": [],
+                "HIV PROTEÁZ INHIBÍTOROK (PI)": [],
+                "HCV, RSV": [],
+                "HCV NS5B-GÁTLÓK": [],
+                "COVID-19": []
+            },
+            "GOMBÁS FERTŐZÉSEK ELLENI SZEREK": {
+                "MEMBRÁNKÁROSÍTÓ SZEREK": [],
+                "14α-DEMETILÁZ GÁTLÓK (azolok)": ["Lokális szerek", "Szisztémás szerek"],
+                "SZKVALÉN-EPOXIDÁZ GÁTLÓK": [],
+                "β-(1,3)-GLUKÁN-SZINTÉZIS GÁTLÓ": []
+            },
+            "PARAZITAELLENES SZEREK": {
+                "MALÁRIAELLENES SZEREK": ["Hem-polimeráz gátlók", "Mitokondriális elektrontranszport-lánc gátló"],
+                "AMOEBIASIS, GIARDIASIS ÉS TRICHOMONIASIS ELLENI SZEREK": [],
+                "TOXOPLASMOSIS ELLENI SZEREK": [],
+                "NEMATODA ELLENES SZEREK": ["β-Tubulin polimerizáció gátlók (benzimidazolok)"],
+                "TREMATODA ELLENES SZEREK": []
+            },
+            "KEMOTERÁPIA": {
+                "ANTIMETABOLITOK": ["Pirimidin analógok", "Folsav antagonisták"],
+                "DIREKT DNS KÁROSÍTÓ SZEREK": ["Mustárnitrogének", "Platina vegyületek", "Antraciklinek", "Vinca alkaloidok", "Taxánok"],
+                "DETOXIKÁLÓ SZEREK": ["haemorrhagiás cystitis"],
+                "HORMONTERÁPIA": ["Antiösztrogének"],
+                "CÉLZOTT DAGANATELLENES SZEREK": ["Tumor antigén elleni antitestek", "Bcr-Abl kináz gátlók", "Angiogenezis gátlók"],
+                "EGYÉB DAGANATELLENES SZEREK": ["proteaszóma gátlók"]
+            },
+            "EGYÉB SZEREK": {
+                "RETINOIDOK": ["Szisztémás", "Lokális"],
+                "D-VITAMIN ANALÓGOK": [],
+                "B-VITAMIN SZÁRMAZÉKOK": [],
+                "PORCVÉDŐK": [],
+                "": ["Q10"]
+            },
+            "A VÉRKÉPZÉSRE HATÓ SZEREK": {
+                "VAS ÉS VITAMINOK": ["Vas", "B12 vitamin"],
+                "NÖVEKEDÉSI FAKTOROK": ["EPO", "G-CSF"]
+            }
+        };
+
+        // Játékállapot változók
+        let currentDrug = "";
+        let correctAnswers = [];
+        let score = 0;
+        let totalQuestions = 0;
+        let usedDrugs = [];
+
+        // DOM elemek
+        const drugDisplay = document.getElementById("current-drug");
+        const level1Select = document.getElementById("level1");
+        const level2Select = document.getElementById("level2");
+        const level3Select = document.getElementById("level3");
+        const checkButton = document.getElementById("check-button");
+        const nextButton = document.getElementById("next-button");
+        const feedbackDiv = document.getElementById("feedback");
+        const scoreSpan = document.getElementById("score");
+        const totalSpan = document.getElementById("total");
+
+        // Eseményfigyelők
+        level1Select.addEventListener("change", updateLevel2Options);
+        level2Select.addEventListener("change", updateLevel3Options);
+        checkButton.addEventListener("click", checkAnswers);
+        nextButton.addEventListener("click", nextQuestion);
+
+        // Játék inicializálása
+        function initGame() {
+            // Betöltjük az első szint opcióit
+            loadLevel1Options();
+            // Kezdjük a játékot
+            nextQuestion();
+        }
+
+        // Következő kérdés betöltése
+        function nextQuestion() {
+            // Elrejtjük a következő gombot és visszajelzést
+            nextButton.style.display = "none";
+            feedbackDiv.style.display = "none";
+            
+            // Visszaállítjuk a legördülő menüket
+            level1Select.selectedIndex = 0;
+            level2Select.selectedIndex = 0;
+            level3Select.selectedIndex = 0;
+            level2Select.disabled = true;
+            level3Select.disabled = true;
+            
+            // Kiválasztunk egy véletlen gyógyszert, amit még nem használtunk
+            const drugKeys = Object.keys(drugDatabase).filter(drug => !usedDrugs.includes(drug));
+            
+            if (drugKeys.length === 0) {
+                // Ha elfogytak a gyógyszerek, játék vége
+                drugDisplay.textContent = "Gratulálok! Végigjártad az összes gyógyszert!";
+                checkButton.disabled = true;
+                return;
+            }
+            
+            const randomIndex = Math.floor(Math.random() * drugKeys.length);
+            currentDrug = drugKeys[randomIndex];
+            usedDrugs.push(currentDrug);
+            correctAnswers = drugDatabase[currentDrug];
+            
+            // Megjelenítjük a gyógyszert
+            drugDisplay.textContent = currentDrug;
+            
+            // Engedélyezjük az ellenőrzés gombot
+            checkButton.disabled = false;
+            
+            // Növeljük a kérdések számát
+            totalQuestions++;
+            totalSpan.textContent = totalQuestions;
+        }
+
+        // 1. szint opcióinak betöltése
+        function loadLevel1Options() {
+            level1Select.innerHTML = '<option value="">Válassz fő hatástani csoportot...</option>';
+            
+            for (const mainGroup in hierarchy) {
+                const option = document.createElement("option");
+                option.value = mainGroup;
+                option.textContent = mainGroup;
+                level1Select.appendChild(option);
+            }
+            
+            level1Select.disabled = false;
+        }
+
+        // 2. szint opcióinak frissítése az 1. szint választása alapján
+        function updateLevel2Options() {
+            level2Select.innerHTML = '<option value="">Válassz alcsoportot...</option>';
+            level3Select.innerHTML = '<option value="">Válassz részletes csoportot...</option>';
+            level3Select.disabled = true;
+            
+            const selectedMainGroup = level1Select.value;
+            
+            if (selectedMainGroup && hierarchy[selectedMainGroup]) {
+                for (const subGroup in hierarchy[selectedMainGroup]) {
+                    const option = document.createElement("option");
+                    option.value = subGroup;
+                    option.textContent = subGroup;
+                    level2Select.appendChild(option);
+                }
+                
+                level2Select.disabled = false;
+            } else {
+                level2Select.disabled = true;
+            }
+        }
+
+        // 3. szint opcióinak frissítése a 2. szint választása alapján
+        function updateLevel3Options() {
+            level3Select.innerHTML = '<option value="">Válassz részletes csoportot...</option>';
+            
+            const selectedMainGroup = level1Select.value;
+            const selectedSubGroup = level2Select.value;
+            
+            if (selectedMainGroup && selectedSubGroup && 
+                hierarchy[selectedMainGroup] && 
+                hierarchy[selectedMainGroup][selectedSubGroup] &&
+                hierarchy[selectedMainGroup][selectedSubGroup].length > 0) {
+                
+                for (const detailGroup of hierarchy[selectedMainGroup][selectedSubGroup]) {
+                    const option = document.createElement("option");
+                    option.value = detailGroup;
+                    option.textContent = detailGroup;
+                    level3Select.appendChild(option);
+                }
+                
+                level3Select.disabled = false;
+            } else {
+                level3Select.disabled = true;
+            }
+        }
+
+        // Válaszok ellenőrzése
+        function checkAnswers() {
+            const userLevel1 = level1Select.value;
+            const userLevel2 = level2Select.value;
+            const userLevel3 = level3Select.value;
+            
+            // Ellenőrizzük a válaszokat
+            const isCorrect = (
+                userLevel1 === correctAnswers[0] &&
+                userLevel2 === correctAnswers[1] &&
+                (correctAnswers[2] === "" || userLevel3 === correctAnswers[2])
+            );
+            
+            // Visszajelzés megjelenítése
+            feedbackDiv.style.display = "block";
+            feedbackDiv.textContent = isCorrect ? 
+                "Helyes válasz! ✅" : 
+                `Helytelen válasz! ❌ A helyes válasz: ${correctAnswers.join(" > ")}`;
+            
+            feedbackDiv.className = isCorrect ? "feedback correct" : "feedback incorrect";
+            
+            // Pontszám frissítése
+            if (isCorrect) {
+                score++;
+                scoreSpan.textContent = score;
+            }
+            
+            // Következő gomb megjelenítése
+            nextButton.style.display = "block";
+            checkButton.disabled = true;
+        }
+
+        // Játék indítása
+        initGame();
+    </script>
+</body>
+</html>
